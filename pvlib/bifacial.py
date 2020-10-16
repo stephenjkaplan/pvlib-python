@@ -149,3 +149,115 @@ def pvfactors_timeseries(
 
     return (df_report.total_inc_front, df_report.total_inc_back,
             df_report.total_abs_front, df_report.total_abs_back)
+
+
+def sky_angle_noshade(gcr, tilt, f_x=0.0):
+    """
+    calculates tangent of angle to top of next row. CURRENTLY ASSUMES NO SHADE LINE WITH THE DEFAULT VALUE FOR f_x
+
+    Parameters
+    ----------
+    gcr : numeric
+        ratio of module length versus row spacing
+    tilt : numeric
+        angle of surface normal from vertical in radians
+    f_x : numeric
+        fraction of module shaded from bottom. defaults to `0.0`, where shade line would be at bottom (ie no shade)
+    Returns
+    -------
+    tan_psi_top
+        tangent of angle to top of next row
+    """
+    f_y = 1.0 - f_x
+    tan_psi_top = f_y * np.sin(tilt) / (1/gcr - f_y * np.cos(tilt))
+
+    return tan_psi_top
+
+
+def f_sky_pv_no_shade(tilt, tan_psi_top):
+    """
+    calculates view factors of sky from unshaded PV module
+
+    Parameters
+    ----------
+    tilt : numeric
+        angle of surface normal from vertical in radians
+    tan_psi_top : numeric
+        tangent of angle from shade line to top of next row
+    Returns
+    -------
+    f_sky_pv_noshade : numeric
+        view factor of sky from unshaded part of PV surface
+    """
+    # view factors of sky from module
+    psi_top = np.arctan(tan_psi_top)
+    f_sky_pv_noshade = (1 + (1 + np.cos(psi_top + tilt)) / (1 + np.cos(tilt))) / 2
+
+    return f_sky_pv_noshade
+
+
+def ground_angle_tangent(gcr, tilt, f_x):
+    """
+    tangent of angle from shadeline to bottom of adjacent row
+    .. math::
+        \\tan{\\psi_b} = \\frac{F_x \\sin \\beta}{F_x \\cos \\beta +
+        \\frac{1}{\\text{GCR}}}
+    Parameters
+    ----------
+    gcr : numeric
+        ratio of module length to row spacing
+    tilt : numeric
+        angle of surface normal from vertical in radians
+    f_x : numeric
+        fraction of module shaded from bottom, ``f_x = 0`` if shade line at
+        bottom and no shade, ``f_x = 1`` if shade line at top and all shade
+    Returns
+    -------
+    tan_psi_bottom : numeric
+        tangent of angle from shade line to bottom of next row
+    """
+    return f_x * np.sin(tilt) / (
+        f_x * np.cos(tilt) + 1/gcr)
+
+
+def ground_angle_1_tangent(gcr, tilt):
+    """
+    tangent of angle to bottom of next row with all shade (shade line at top)
+    so :math:`F_x = 1`
+    .. math::
+        \\tan{\\psi_b\\left(x=1\\right)} = \\frac{\\sin{\\beta}}{\\cos{\\beta}
+        + \\frac{1}{\\text{GCR}}}
+    Parameters
+    ----------
+    gcr : numeric
+        ratio of module length to row spacing
+    tilt : numeric
+        angle of surface normal from vertical in radians
+    Returns
+    -------
+    tan_psi_bottom_1 : numeric
+        tangent of angle to bottom of next row with all shade (shade line at
+        top)
+    """
+    return ground_angle_tangent(gcr, tilt, 1.0)
+
+
+def f_ground_pv_full_shade(tilt, tan_psi_bottom_1):
+    """
+    view factors of ground from fully shaded PV module
+
+    Parameters
+    ----------
+    tilt : numeric
+        angle of surface normal from vertical in radians
+    tan_psi_bottom_1 : numeric
+        tangent of angle to bottom of next row with all shade
+    Returns
+    -------
+    f_gnd_pv_shade : numeric
+        view factor of ground from shaded part of PV surface
+    """
+    psi_bottom_1 = np.arctan(tan_psi_bottom_1)
+    f_gnd_pv_full_shade = (1 + (1 - np.cos(tilt - psi_bottom_1)) / (1 - np.cos(tilt))) / 2
+
+    return f_gnd_pv_full_shade
